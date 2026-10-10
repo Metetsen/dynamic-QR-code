@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestor QR Dinámico</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-10">
+  <header class="bg-blue-600 text-white p-4 shadow-md text-center">
+    <h1 class="text-xl font-bold">Gestor QR Dinámico</h1>
+  </header>
+
+  <main class="max-w-md mx-auto mt-6 px-4 space-y-6">
+    <!-- Credenciales -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      <label class="block text-sm font-semibold mb-1">Token de Administrador</label>
+      <input type="password" id="adminToken" placeholder="Tu contraseña secreta" class="w-full border p-2 rounded bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none">
+    </div>
+
+    <!-- Escáner de Cámara -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      <h2 class="text-sm font-semibold mb-2">1. Leer un QR Físico (Opcional)</h2>
+      <button id="btnScan" class="w-full bg-slate-800 text-white py-2 rounded font-medium hover:bg-slate-700 transition">📸 Abrir Cámara</button>
+      <div id="reader" class="mt-4 hidden w-full"></div>
+    </div>
+
+    <!-- Formulario de Enlace -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      <h2 class="text-sm font-semibold mb-2">2. Configurar Enlace</h2>
+      
+      <label class="block text-xs text-slate-500 mb-1 mt-2">ID del QR (Identificador único)</label>
+      <div class="flex gap-2">
+        <input type="text" id="qrId" placeholder="ej: poster-centro" class="w-full border p-2 rounded bg-slate-50 outline-none">
+        <button id="btnGenId" class="bg-slate-200 px-3 rounded text-sm hover:bg-slate-300">Aleatorio</button>
+      </div>
+
+      <label class="block text-xs text-slate-500 mb-1 mt-4">URL de Destino (A dónde irá el usuario)</label>
+      <input type="url" id="qrDestino" placeholder="https://..." class="w-full border p-2 rounded bg-slate-50 outline-none">
+
+      <button id="btnGuardar" class="w-full bg-green-600 text-white py-3 rounded mt-6 font-bold hover:bg-green-700 transition">💾 Guardar y Asignar Enlace</button>
+      <p id="msg" class="text-center text-sm mt-2 hidden"></p>
+    </div>
+
+    <!-- Generador Visual -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center">
+      <h2 class="text-sm font-semibold mb-4 w-full text-left">3. Tu Código QR Visual</h2>
+      <div id="qrCanvas" class="p-4 bg-white border-2 border-dashed border-slate-300 rounded-lg min-h-[200px] flex items-center justify-center">
+        <span class="text-slate-400 text-sm">Guarda un enlace para generar el QR</span>
+      </div>
+      <p id="qrUrlText" class="text-xs text-blue-600 mt-4 break-all text-center"></p>
+    </div>
+  </main>
+
+  <script>
+    // Elementos de la interfaz
+    const tokenInput = document.getElementById('adminToken');
+    const idInput = document.getElementById('qrId');
+    const destinoInput = document.getElementById('qrDestino');
+    const btnGuardar = document.getElementById('btnGuardar');
+    const msg = document.getElementById('msg');
+    const btnScan = document.getElementById('btnScan');
+    let html5QrcodeScanner = null;
+
+    // Recuperar token si se guardó antes
+    tokenInput.value = localStorage.getItem('qr_token') || '';
+    tokenInput.addEventListener('change', () => localStorage.setItem('qr_token', tokenInput.value));
+
+    // Generar ID aleatorio
+    document.getElementById('btnGenId').addEventListener('click', () => {
+      idInput.value = Math.random().toString(36).substring(2, 10);
+    });
+
+    // Guardar en la Base de Datos
+    btnGuardar.addEventListener('click', async () => {
+      const id = idInput.value.trim();
+      const destino = destinoInput.value.trim();
+      const token = tokenInput.value.trim();
+
+      if(!id || !destino || !token) return mostrarMensaje('Llena todos los campos', 'red');
+
+      btnGuardar.innerText = 'Guardando...';
+      try {
+        const res = await fetch(`/admin/links/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ destino, activo: true })
+        });
+
+        if (res.ok) {
+          mostrarMensaje('¡Enlace guardado con éxito!', 'green');
+          generarImagenQR(id);
+        } else {
+          mostrarMensaje(`Error: ${await res.text()}`, 'red');
+        }
+      } catch (err) {
+        mostrarMensaje('Error de red', 'red');
+      }
+      btnGuardar.innerText = '💾 Guardar y Asignar Enlace';
+    });
+
+    // Mostrar el código QR visual en pantalla
+    function generarImagenQR(id) {
+      const contenedor = document.getElementById('qrCanvas');
+      contenedor.innerHTML = ''; // Limpiar anterior
+      contenedor.classList.remove('border-dashed', 'border-2');
+      
+      const urlFinal = `${window.location.origin}/q/${id}`;
+      document.getElementById('qrUrlText').innerText = urlFinal;
+
+      new QRCode(contenedor, {
+        text: urlFinal,
+        width: 200,
+        height: 200,
+        colorDark : "#000000",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+      });
+    }
+
+    // Funciones del Escáner de Cámara
+    btnScan.addEventListener('click', () => {
+      const readerDiv = document.getElementById('reader');
+      readerDiv.classList.remove('hidden');
+      
+      if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+      }
+    });
+
+    function onScanSuccess(decodedText, decodedResult) {
+      // Si escaneamos un QR nuestro, extraemos el ID. Si es la URL completa, cortamos hasta el ID.
+      try {
+        const url = new URL(decodedText);
+        const partes = url.pathname.split('/');
+        if(partes[1] === 'q' && partes[2]) {
+          idInput.value = partes[2];
+        } else {
+          idInput.value = decodedText; 
+        }
+      } catch {
+        // Si no es una URL, asumimos que el texto es el ID directamente
+        idInput.value = decodedText;
+      }
+      
+      mostrarMensaje('QR Escaneado. Listo para actualizar enlace.', 'blue');
+      html5QrcodeScanner.clear(); // Apagar cámara
+      document.getElementById('reader').classList.add('hidden');
+    }
+
+    function onScanFailure(error) { /* Ignorar errores de lectura en tiempo real */ }
+
+    // Utilidad de mensajes
+    function mostrarMensaje(texto, color) {
+      msg.innerText = texto;
+      msg.className = `text-center text-sm mt-2 block font-medium text-${color}-600`;
+    }
+  </script>
+</body>
+</html>
