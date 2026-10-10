@@ -1,0 +1,7 @@
+{
+  "regions": ["iad1"],
+  "rewrites": [
+    { "source": "/q/:id", "destination": "/api/q?id=:id" },
+    { "source": "/admin/:recurso/:id", "destination": "/api/admin?recurso=:recurso&id=:id" }
+  ]
+}

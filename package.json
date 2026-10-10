@@ -1,0 +1,10 @@
+{
+  "name": "dynamic-QR-code",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "@upstash/redis": "^1.34.0",
+    "@vercel/functions": "^2.0.0"
+  }
+}
