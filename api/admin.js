@@ -1,25 +1,18 @@
-import { neon } from '@neondatabase/serverless';
-import { Redis } from '@upstash/redis';
-import { timingSafeEqual } from 'node:crypto'; // Importación para comparación segura
+import postgres from 'postgres';
+import { timingSafeEqual } from 'node:crypto';
 
-const sql = neon(process.env.DATABASE_URL);
-const redis = Redis.fromEnv();
+// Conexión estándar a PostgreSQL (Supabase)
+const sql = postgres(process.env.DATABASE_URL);
 
 function autorizado(req) {
   const authHeader = req.headers.get('authorization') || '';
   const tokenProporcionado = authHeader.replace('Bearer ', '');
   const tokenEsperado = process.env.ADMIN_TOKEN || '';
 
-  // Evitar errores si los tokens no tienen la misma longitud (requisito de timingSafeEqual)
   if (!tokenProporcionado || tokenProporcionado.length !== tokenEsperado.length) {
     return false;
   }
-
-  // Comparación en tiempo constante para evitar ataques de tiempo
-  return timingSafeEqual(
-    Buffer.from(tokenProporcionado),
-    Buffer.from(tokenEsperado)
-  );
+  return timingSafeEqual(Buffer.from(tokenProporcionado), Buffer.from(tokenEsperado));
 }
 
 export async function PUT(req) {
@@ -27,40 +20,25 @@ export async function PUT(req) {
 
   const params = new URL(req.url).searchParams;
   const id = params.get('id');
-  
-  // Validación estricta del recurso y formato del ID
   if (params.get('recurso') !== 'links' || !id || !/^[\w-]+$/.test(id)) {
     return new Response('No encontrado', { status: 404 });
   }
 
-  const body = await req.json().catch(() => ({})); // Prevenir caídas por JSON mal formado
+  const body = await req.json().catch(() => ({}));
   const { destino, activo = true } = body;
   
   if (!destino) return new Response('Falta el destino', { status: 400 });
 
   let u;
-  try { 
-    u = new URL(destino); 
-  } catch { 
-    return new Response('URL inválida', { status: 400 }); 
-  }
-  
-  if (!['http:', 'https:'].includes(u.protocol)) {
-    return new Response('Solo se permiten protocolos http o https', { status: 400 });
-  }
-  
-  // Limitar tamaño de la URL para evitar almacenamiento excesivo
-  if (u.href.length > 2048) {
-    return new Response('URL demasiado larga', { status: 400 });
-  }
+  try { u = new URL(destino); } catch { return new Response('URL inválida', { status: 400 }); }
+  if (!['http:', 'https:'].includes(u.protocol)) return new Response('Solo http/https', { status: 400 });
+  if (u.href.length > 2048) return new Response('URL demasiado larga', { status: 400 });
 
   await sql`
     INSERT INTO qr_links (id, destino, activo) VALUES (${id}, ${u.href}, ${activo})
     ON CONFLICT (id) DO UPDATE
       SET destino = EXCLUDED.destino, activo = EXCLUDED.activo, actualizado = now()`;
 
-  await redis.del(`link:${id}`); // El cambio se aplica en el siguiente escaneo
-  
   return Response.json({ ok: true, id, destino: u.href });
 }
 
@@ -69,7 +47,6 @@ export async function GET(req) {
 
   const params = new URL(req.url).searchParams;
   const id = params.get('id');
-  
   if (params.get('recurso') !== 'stats' || !id || !/^[\w-]+$/.test(id)) {
     return new Response('No encontrado', { status: 404 });
   }
