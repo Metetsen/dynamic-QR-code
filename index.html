@@ -1,166 +1,658 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestor QR Dinámico</title>
+  <title>MATACHIN - Gestor QR</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: '#a3e635', // lime-400 para acentos
+          }
+        }
+      }
+    }
+  </script>
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- JSZip for ZIP export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- qr-code-styling for advanced QR generation -->
+  <script src="https://cdn.jsdelivr.net/npm/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+  <!-- html5-qrcode for scanning -->
   <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    /* Custom slider styling to match the image */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 24px;
+      width: 24px;
+      border-radius: 50%;
+      background: #a3e635;
+      border: 4px solid #000;
+      cursor: pointer;
+      margin-top: -10px;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 4px;
+      cursor: pointer;
+      background: #334155;
+      border-radius: 2px;
+    }
+    .dark input[type=range]::-webkit-slider-thumb {
+      border-color: #1e293b;
+    }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen pb-10">
-  <header class="bg-blue-600 text-white p-4 shadow-md text-center">
-    <h1 class="text-xl font-bold">Gestor QR Dinámico</h1>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-200 min-h-screen flex flex-col transition-colors duration-300">
+  
+  <!-- Header -->
+  <header class="p-4 flex justify-between items-center max-w-3xl mx-auto w-full">
+    <div class="flex items-center gap-2">
+      <i class="fa-solid fa-qrcode text-brand text-2xl"></i>
+      <h1 class="text-xl font-bold tracking-tight">QR<span class="font-light">Manager</span></h1>
+    </div>
+    <button id="themeToggle" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition">
+      <i class="fa-solid fa-moon dark:hidden"></i>
+      <i class="fa-solid fa-sun hidden dark:block text-yellow-300"></i>
+    </button>
   </header>
 
-  <main class="max-w-md mx-auto mt-6 px-4 space-y-6">
-    <!-- Credenciales -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-      <label class="block text-sm font-semibold mb-1">Token de Administrador</label>
-      <input type="password" id="adminToken" placeholder="Tu contraseña secreta" class="w-full border p-2 rounded bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none">
-    </div>
-
-    <!-- Escáner de Cámara -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-      <h2 class="text-sm font-semibold mb-2">1. Leer un QR Físico (Opcional)</h2>
-      <button id="btnScan" class="w-full bg-slate-800 text-white py-2 rounded font-medium hover:bg-slate-700 transition">📸 Abrir Cámara</button>
-      <div id="reader" class="mt-4 hidden w-full"></div>
-    </div>
-
-    <!-- Formulario de Enlace -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-      <h2 class="text-sm font-semibold mb-2">2. Configurar Enlace</h2>
-      
-      <label class="block text-xs text-slate-500 mb-1 mt-2">ID del QR (Identificador único)</label>
-      <div class="flex gap-2">
-        <input type="text" id="qrId" placeholder="ej: poster-centro" class="w-full border p-2 rounded bg-slate-50 outline-none">
-        <button id="btnGenId" class="bg-slate-200 px-3 rounded text-sm hover:bg-slate-300">Aleatorio</button>
+  <!-- Main Content Area -->
+  <main class="flex-grow max-w-3xl mx-auto w-full px-4 pb-20">
+    
+    <!-- View 1: Main Menu -->
+    <div id="view-menu" class="space-y-6 mt-10">
+      <div class="text-center mb-10">
+        <h2 class="text-3xl font-light mb-2">¿Qué deseas hacer hoy?</h2>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">Selecciona una herramienta para comenzar</p>
       </div>
 
-      <label class="block text-xs text-slate-500 mb-1 mt-4">URL de Destino (A dónde irá el usuario)</label>
-      <input type="url" id="qrDestino" placeholder="https://..." class="w-full border p-2 rounded bg-slate-50 outline-none">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Option 1: Generator -->
+        <button onclick="switchView('view-generator')" class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:border-brand dark:hover:border-brand transition-all group">
+          <div class="h-16 w-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-layer-group text-2xl text-slate-700 dark:text-slate-300 group-hover:text-brand transition-colors"></i>
+          </div>
+          <h3 class="font-semibold text-lg mb-1">Generador de QR</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 text-center">Crea y diseña múltiples códigos QR para imprimir</p>
+        </button>
 
-      <button id="btnGuardar" class="w-full bg-green-600 text-white py-3 rounded mt-6 font-bold hover:bg-green-700 transition">💾 Guardar y Asignar Enlace</button>
-      <p id="msg" class="text-center text-sm mt-2 hidden"></p>
-    </div>
-
-    <!-- Generador Visual -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center">
-      <h2 class="text-sm font-semibold mb-4 w-full text-left">3. Tu Código QR Visual</h2>
-      <div id="qrCanvas" class="p-4 bg-white border-2 border-dashed border-slate-300 rounded-lg min-h-[200px] flex items-center justify-center">
-        <span class="text-slate-400 text-sm">Guarda un enlace para generar el QR</span>
+        <!-- Option 2: Dynamic Manager -->
+        <button onclick="switchView('view-manager')" class="flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-all group">
+          <div class="h-16 w-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-link text-2xl text-slate-700 dark:text-slate-300 group-hover:text-blue-500 transition-colors"></i>
+          </div>
+          <h3 class="font-semibold text-lg mb-1">Gestor Dinámico</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 text-center">Asigna o actualiza enlaces de QR existentes</p>
+        </button>
       </div>
-      <p id="qrUrlText" class="text-xs text-blue-600 mt-4 break-all text-center"></p>
     </div>
+
+    <!-- View 2: Generator (Quantity & Design) -->
+    <div id="view-generator" class="hidden space-y-8 mt-4">
+      <button onclick="switchView('view-menu')" class="text-sm text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-2">
+        <i class="fa-solid fa-arrow-left"></i> Volver
+      </button>
+
+      <!-- Step 1: Quantity -->
+      <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <h3 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-6">¿Cuántos códigos necesitás?</h3>
+        
+        <div class="flex items-baseline gap-2 mb-8">
+          <span id="qtyDisplay" class="text-6xl font-bold">25</span>
+          <span class="text-slate-500 dark:text-slate-400">códigos</span>
+        </div>
+
+        <input type="range" id="qtySlider" min="1" max="500" value="25" class="mb-8">
+
+        <div class="flex flex-wrap gap-2 justify-between">
+          <button class="qty-btn px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-brand dark:hover:border-brand" data-val="1">1</button>
+          <button class="qty-btn px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-brand dark:hover:border-brand" data-val="5">5</button>
+          <button class="qty-btn px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-brand dark:hover:border-brand" data-val="10">10</button>
+          <button class="qty-btn px-4 py-2 rounded-lg border border-brand text-brand" data-val="25">25</button>
+          <button class="qty-btn px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-brand dark:hover:border-brand" data-val="50">50</button>
+          <button class="qty-btn px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-brand dark:hover:border-brand" data-val="100">100</button>
+          <button class="qty-btn px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-brand dark:hover:border-brand" data-val="250">250</button>
+          <button class="qty-btn px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 hover:border-brand dark:hover:border-brand" data-val="500">500</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Design -->
+      <div class="bg-white dark:bg-[#1a1a1a] p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-8">
+        
+        <!-- Preview -->
+        <div class="flex-shrink-0 flex items-center justify-center bg-[#f0f0f0] p-4 rounded-xl min-w-[250px] min-h-[250px]">
+          <div id="qrPreview"></div>
+        </div>
+
+        <!-- Customization -->
+        <div class="flex-grow space-y-6">
+          
+          <!-- Size & Logo -->
+          <div class="flex gap-4">
+            <div class="flex-1">
+              <label class="block text-xs text-slate-500 mb-2">Tamaño base (cm)</label>
+              <input type="number" id="qrSizeCm" value="5" min="2" max="20" class="w-full bg-slate-100 dark:bg-[#2a2a2a] border-none p-2 rounded text-sm outline-none">
+            </div>
+            <div class="flex-1">
+              <label class="block text-xs text-slate-500 mb-2">Logo Central (Opcional)</label>
+              <input type="file" id="qrLogo" accept="image/png, image/jpeg" class="block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-brand file:text-black hover:file:bg-lime-500">
+            </div>
+          </div>
+
+          <!-- Color -->
+          <div>
+            <label class="block text-xs text-slate-500 mb-2">Elige un color</label>
+            <div class="flex gap-2">
+              <button class="color-btn w-8 h-8 rounded bg-black ring-2 ring-offset-1 ring-offset-[#1a1a1a] ring-white dark:ring-slate-400" data-color="#000000"></button>
+              <button class="color-btn w-8 h-8 rounded bg-[#1e3a8a] border border-transparent" data-color="#1e3a8a"></button>
+              <button class="color-btn w-8 h-8 rounded bg-[#c2410c] border border-transparent" data-color="#c2410c"></button>
+              <button class="color-btn w-8 h-8 rounded bg-[#b91c1c] border border-transparent" data-color="#b91c1c"></button>
+              <button class="color-btn w-8 h-8 rounded bg-[#15803d] border border-transparent" data-color="#15803d"></button>
+            </div>
+          </div>
+
+          <!-- Style Options -->
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs text-slate-500 mb-2">Puntos</label>
+              <select id="dotType" class="w-full bg-slate-100 dark:bg-[#2a2a2a] border-none p-1.5 rounded text-xs outline-none">
+                <option value="square">Cuadrado</option>
+                <option value="dots">Puntos</option>
+                <option value="rounded">Redondeado</option>
+                <option value="classy">Elegante</option>
+                <option value="classy-rounded">Elegante red.</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-2">Borde Marcador</label>
+              <select id="cornerSquareType" class="w-full bg-slate-100 dark:bg-[#2a2a2a] border-none p-1.5 rounded text-xs outline-none">
+                <option value="square">Cuadrado</option>
+                <option value="dot">Punto</option>
+                <option value="extra-rounded">Redondeado</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-500 mb-2">Centro Marcador</label>
+              <select id="cornerDotType" class="w-full bg-slate-100 dark:bg-[#2a2a2a] border-none p-1.5 rounded text-xs outline-none">
+                <option value="square">Cuadrado</option>
+                <option value="dot">Punto</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Export Options -->
+      <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <h3 class="text-sm font-semibold mb-4"><i class="fa-solid fa-download mr-2"></i>Exportar <span id="exportCountDisplay">25</span> códigos</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Individual files -->
+          <div class="space-y-3 border-r border-slate-200 dark:border-slate-700 pr-4">
+            <p class="text-xs text-slate-500 mb-2">Archivos individuales (ZIP)</p>
+            <div class="flex gap-2">
+              <button onclick="exportZip('png')" class="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-xs py-2 rounded transition">PNG</button>
+              <button onclick="exportZip('jpeg')" class="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-xs py-2 rounded transition">JPG</button>
+              <button onclick="exportZip('svg')" class="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-xs py-2 rounded transition">SVG</button>
+            </div>
+          </div>
+
+          <!-- PDF Sheet -->
+          <div class="space-y-3 pl-4">
+            <p class="text-xs text-slate-500 mb-2">Página para imprimir (PDF)</p>
+            <div class="flex gap-2">
+              <select id="pdfSize" class="flex-1 bg-slate-100 dark:bg-slate-700 border-none p-2 rounded text-xs outline-none">
+                <option value="a4">A4 (210x297mm)</option>
+                <option value="letter">Carta (8.5x11")</option>
+                <option value="a3">A3</option>
+                <option value="a5">A5</option>
+                <option value="legal">Oficio</option>
+              </select>
+              <button onclick="exportPdf()" class="bg-brand text-black font-medium px-4 py-2 rounded text-xs hover:bg-lime-500 transition">Generar PDF</button>
+            </div>
+          </div>
+        </div>
+        <p id="exportStatus" class="text-xs text-center text-slate-500 mt-4 hidden"></p>
+      </div>
+
+    </div>
+
+    <!-- View 3: Dynamic Manager -->
+    <div id="view-manager" class="hidden space-y-6 mt-4">
+      <button onclick="switchView('view-menu')" class="text-sm text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center gap-2 mb-4">
+        <i class="fa-solid fa-arrow-left"></i> Volver
+      </button>
+
+      <!-- Token -->
+      <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <div class="flex items-center gap-2 mb-2 text-slate-500 dark:text-slate-400">
+          <i class="fa-solid fa-key text-xs"></i>
+          <label class="text-xs uppercase tracking-wider font-semibold">Credenciales</label>
+        </div>
+        <input type="password" id="adminToken" placeholder="Tu token de administrador" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-lg text-sm outline-none focus:border-blue-500 transition">
+      </div>
+
+      <!-- Scanner -->
+      <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+        <h2 class="text-sm font-semibold mb-3 flex items-center gap-2"><span class="bg-slate-100 dark:bg-slate-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span> Leer código físico</h2>
+        <button id="btnScan" class="w-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 py-3 rounded-lg font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition flex justify-center items-center gap-2">
+          <i class="fa-solid fa-camera"></i> Abrir Cámara
+        </button>
+        <div id="reader" class="mt-4 hidden w-full overflow-hidden rounded-lg"></div>
+      </div>
+
+      <!-- Link Config -->
+      <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 relative">
+        <h2 class="text-sm font-semibold mb-4 flex items-center gap-2"><span class="bg-slate-100 dark:bg-slate-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span> Configurar Enlace</h2>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">ID del QR</label>
+            <div class="flex gap-2">
+              <input type="text" id="qrId" placeholder="ej: cartel-01" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-lg text-sm outline-none focus:border-blue-500 transition">
+              <button id="btnGenId" class="bg-slate-100 dark:bg-slate-700 px-4 rounded-lg text-xs hover:bg-slate-200 dark:hover:bg-slate-600 transition" title="Generar ID aleatorio">
+                <i class="fa-solid fa-dice"></i>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">URL de Destino</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fa-solid fa-link text-slate-400 text-xs"></i>
+              </div>
+              <input type="url" id="qrDestino" placeholder="https://..." class="w-full pl-8 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-lg text-sm outline-none focus:border-blue-500 transition">
+            </div>
+          </div>
+
+          <button id="btnGuardar" class="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition shadow-md shadow-blue-500/20">
+            Guardar Enlace
+          </button>
+        </div>
+        
+        <!-- Success overlay -->
+        <div id="successOverlay" class="absolute inset-0 bg-white/90 dark:bg-slate-800/95 rounded-xl hidden flex-col items-center justify-center z-10 backdrop-blur-sm">
+          <div class="w-12 h-12 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mb-3">
+            <i class="fa-solid fa-check text-xl"></i>
+          </div>
+          <p class="font-medium">Enlace actualizado</p>
+          <button onclick="document.getElementById('successOverlay').classList.add('hidden')" class="mt-4 text-xs text-slate-500 underline">Cerrar</button>
+        </div>
+      </div>
+
+      <!-- Preview visual -->
+      <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col items-center">
+        <h2 class="text-sm font-semibold mb-4 w-full flex items-center gap-2"><span class="bg-slate-100 dark:bg-slate-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span> QR Visual (Opcional)</h2>
+        <div id="qrManagerPreview" class="p-4 bg-white border border-slate-200 rounded-lg min-h-[200px] flex items-center justify-center">
+          <span class="text-slate-400 text-xs text-center">El QR aparecerá aquí<br>al guardar el enlace</span>
+        </div>
+        <p id="qrUrlText" class="text-[10px] text-slate-400 mt-3 break-all text-center max-w-full"></p>
+      </div>
+    </div>
+
   </main>
 
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 dark:border-slate-800 py-6 mt-auto">
+    <div class="max-w-3xl mx-auto px-4 flex flex-col items-center gap-2">
+      <p class="text-xs text-slate-500">Diseñado por <span class="font-bold tracking-wide">MATACHIN</span></p>
+      <div class="flex gap-4">
+        <a href="https://github.com/Metetsen" target="_blank" class="text-slate-400 hover:text-slate-800 dark:hover:text-white transition">
+          <i class="fa-brands fa-github text-lg"></i>
+        </a>
+        <a href="https://www.linkedin.com/in/enrique-juagibioy-568082186/?isSelfProfile=true" target="_blank" class="text-slate-400 hover:text-[#0a66c2] dark:hover:text-[#4393e4] transition">
+          <i class="fa-brands fa-linkedin text-lg"></i>
+        </a>
+      </div>
+    </div>
+  </footer>
+
   <script>
-    // Elementos de la interfaz
+    // --- APP STATE & INIT ---
+    let currentQty = 25;
+    let qrStyleConfig = {
+      width: 200, height: 200,
+      data: "https://ejemplo.com/q/001",
+      image: "",
+      dotsOptions: { color: "#000000", type: "square" },
+      cornersSquareOptions: { color: "#000000", type: "square" },
+      cornersDotOptions: { color: "#000000", type: "square" },
+      backgroundOptions: { color: "#ffffff" },
+      imageOptions: { crossOrigin: "anonymous", margin: 5 }
+    };
+    let qrCode = new QRCodeStyling(qrStyleConfig);
+    let managerQrCode = null;
+    let html5QrcodeScanner = null;
+
+    // Theme logic
+    const themeToggle = document.getElementById('themeToggle');
+    const html = document.documentElement;
+    themeToggle.addEventListener('click', () => {
+      html.classList.toggle('dark');
+    });
+
+    function switchView(viewId) {
+      document.getElementById('view-menu').classList.add('hidden');
+      document.getElementById('view-generator').classList.add('hidden');
+      document.getElementById('view-manager').classList.add('hidden');
+      document.getElementById(viewId).classList.remove('hidden');
+      
+      // Stop camera if leaving manager
+      if(viewId !== 'view-manager' && html5QrcodeScanner) {
+        try { html5QrcodeScanner.clear(); document.getElementById('reader').classList.add('hidden'); } catch(e){}
+      }
+      
+      if(viewId === 'view-generator') renderPreview();
+    }
+
+    // --- GENERATOR LOGIC ---
+    
+    // Quantity slider & buttons
+    const slider = document.getElementById('qtySlider');
+    const display = document.getElementById('qtyDisplay');
+    const expDisplay = document.getElementById('exportCountDisplay');
+    const qtyBtns = document.querySelectorAll('.qty-btn');
+
+    function updateQty(val) {
+      currentQty = parseInt(val);
+      slider.value = currentQty;
+      display.innerText = currentQty;
+      expDisplay.innerText = currentQty;
+      
+      qtyBtns.forEach(btn => {
+        if(parseInt(btn.dataset.val) === currentQty) {
+          btn.classList.add('border-brand', 'text-brand');
+          btn.classList.remove('border-slate-300', 'dark:border-slate-600');
+        } else {
+          btn.classList.remove('border-brand', 'text-brand');
+          btn.classList.add('border-slate-300', 'dark:border-slate-600');
+        }
+      });
+    }
+
+    slider.addEventListener('input', (e) => updateQty(e.target.value));
+    qtyBtns.forEach(btn => {
+      btn.addEventListener('click', () => updateQty(btn.dataset.val));
+    });
+
+    // Styling listeners
+    document.querySelectorAll('.color-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('ring-2', 'ring-offset-1', 'ring-offset-[#1a1a1a]', 'ring-white', 'dark:ring-slate-400'));
+        e.target.classList.add('ring-2', 'ring-offset-1', 'ring-offset-[#1a1a1a]', 'ring-white', 'dark:ring-slate-400');
+        const color = e.target.dataset.color;
+        qrStyleConfig.dotsOptions.color = color;
+        qrStyleConfig.cornersSquareOptions.color = color;
+        qrStyleConfig.cornersDotOptions.color = color;
+        renderPreview();
+      });
+    });
+
+    document.getElementById('dotType').addEventListener('change', (e) => { qrStyleConfig.dotsOptions.type = e.target.value; renderPreview(); });
+    document.getElementById('cornerSquareType').addEventListener('change', (e) => { qrStyleConfig.cornersSquareOptions.type = e.target.value; renderPreview(); });
+    document.getElementById('cornerDotType').addEventListener('change', (e) => { qrStyleConfig.cornersDotOptions.type = e.target.value; renderPreview(); });
+    
+    // Logo upload
+    document.getElementById('qrLogo').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          qrStyleConfig.image = event.target.result;
+          renderPreview();
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    function renderPreview() {
+      const container = document.getElementById('qrPreview');
+      container.innerHTML = '';
+      qrCode.update(qrStyleConfig);
+      qrCode.append(container);
+    }
+
+    // Helper: generate random IDs for bulk
+    function generateBulkIds(count) {
+      return Array.from({length: count}, () => Math.random().toString(36).substring(2, 10));
+    }
+
+    // Export logic
+    function setStatus(msg) {
+      const el = document.getElementById('exportStatus');
+      el.innerText = msg;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 3000);
+    }
+
+    async function exportZip(format) { // format: 'png', 'jpeg', 'svg'
+      setStatus(`Generando ${currentQty} códigos...`);
+      const zip = new JSZip();
+      const ids = generateBulkIds(currentQty);
+      const baseUrl = window.location.origin + '/q/';
+      
+      const ext = format === 'jpeg' ? 'jpg' : format;
+      const mime = format === 'svg' ? 'image/svg+xml' : `image/${format}`;
+
+      for(let i=0; i<currentQty; i++) {
+        const id = ids[i];
+        let conf = {...qrStyleConfig, data: baseUrl + id};
+        // Increase resolution for export
+        conf.width = 600; conf.height = 600;
+        let tempQr = new QRCodeStyling(conf);
+        
+        let rawData;
+        if(format === 'svg') {
+          rawData = await tempQr.getRawData('svg');
+          zip.file(`qr_${id}.svg`, rawData);
+        } else {
+          rawData = await tempQr.getRawData(format);
+          zip.file(`qr_${id}.${ext}`, rawData, {base64: false});
+        }
+      }
+      
+      setStatus('Comprimiendo ZIP...');
+      zip.generateAsync({type:"blob"}).then(function(content) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(content);
+        a.download = `qrs_generados_${new Date().getTime()}.zip`;
+        a.click();
+        setStatus('¡Descarga completa!');
+      });
+    }
+
+    async function exportPdf() {
+      setStatus(`Preparando PDF para ${currentQty} códigos...`);
+      const sizeStr = document.getElementById('pdfSize').value;
+      let format = 'a4';
+      if(sizeStr === 'letter') format = 'letter';
+      if(sizeStr === 'a3') format = 'a3';
+      if(sizeStr === 'a5') format = 'a5';
+      if(sizeStr === 'legal') format = [215.9, 355.6]; // mm
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: format });
+      
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      // User requested size in cm, convert to mm
+      const qrSizeMm = parseFloat(document.getElementById('qrSizeCm').value) * 10; 
+      const marginMm = 15; // page margin
+      const gapMm = 5; // space between QRs
+
+      // Calculate layout
+      const usableWidth = pageWidth - (marginMm * 2);
+      const usableHeight = pageHeight - (marginMm * 2);
+      const cols = Math.floor((usableWidth + gapMm) / (qrSizeMm + gapMm));
+      const rows = Math.floor((usableHeight + gapMm) / (qrSizeMm + gapMm + 5)); // +5 for ID text
+      
+      if(cols < 1 || rows < 1) {
+        alert("El tamaño de QR seleccionado es demasiado grande para esta página.");
+        return;
+      }
+
+      const qrsPerPage = cols * rows;
+      const ids = generateBulkIds(currentQty);
+      const baseUrl = window.location.origin + '/q/';
+
+      let currentIdIdx = 0;
+      let pageNum = 1;
+
+      while(currentIdIdx < currentQty) {
+        if(pageNum > 1) pdf.addPage();
+        
+        let row = 0;
+        let col = 0;
+        
+        while(row < rows && currentIdIdx < currentQty) {
+          const id = ids[currentIdIdx];
+          const x = marginMm + (col * (qrSizeMm + gapMm));
+          const y = marginMm + (row * (qrSizeMm + gapMm + 5)); // extra space for text
+          
+          // Generate high-res base64 image for PDF
+          let conf = {...qrStyleConfig, data: baseUrl + id, width: 800, height: 800};
+          let tempQr = new QRCodeStyling(conf);
+          const blob = await tempQr.getRawData('jpeg');
+          
+          // Convert blob to base64
+          const base64data = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+
+          // Add image to PDF
+          pdf.addImage(base64data, 'JPEG', x, y, qrSizeMm, qrSizeMm);
+          
+          // Add ID text below
+          pdf.setFontSize(8);
+          pdf.setTextColor(100);
+          pdf.text(id, x + (qrSizeMm/2), y + qrSizeMm + 3.5, {align: 'center'});
+
+          currentIdIdx++;
+          col++;
+          if(col >= cols) {
+            col = 0;
+            row++;
+          }
+        }
+        pageNum++;
+      }
+
+      pdf.save(`qrs_imprimir_${new Date().getTime()}.pdf`);
+      setStatus('¡PDF generado!');
+    }
+
+    // --- MANAGER LOGIC ---
+    
     const tokenInput = document.getElementById('adminToken');
     const idInput = document.getElementById('qrId');
     const destinoInput = document.getElementById('qrDestino');
     const btnGuardar = document.getElementById('btnGuardar');
-    const msg = document.getElementById('msg');
-    const btnScan = document.getElementById('btnScan');
-    let html5QrcodeScanner = null;
-
-    // Recuperar token si se guardó antes
+    
     tokenInput.value = localStorage.getItem('qr_token') || '';
     tokenInput.addEventListener('change', () => localStorage.setItem('qr_token', tokenInput.value));
 
-    // Generar ID aleatorio
     document.getElementById('btnGenId').addEventListener('click', () => {
       idInput.value = Math.random().toString(36).substring(2, 10);
     });
 
-    // Guardar en la Base de Datos
     btnGuardar.addEventListener('click', async () => {
       const id = idInput.value.trim();
       const destino = destinoInput.value.trim();
       const token = tokenInput.value.trim();
 
-      if(!id || !destino || !token) return mostrarMensaje('Llena todos los campos', 'red');
+      if(!id || !destino || !token) {
+        alert("Faltan datos por llenar"); return;
+      }
 
+      const origText = btnGuardar.innerText;
       btnGuardar.innerText = 'Guardando...';
+      
       try {
         const res = await fetch(`/admin/links/${id}`, {
           method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ destino, activo: true })
         });
 
         if (res.ok) {
-          mostrarMensaje('¡Enlace guardado con éxito!', 'green');
-          generarImagenQR(id);
+          document.getElementById('successOverlay').classList.remove('hidden');
+          document.getElementById('successOverlay').classList.add('flex');
+          
+          // Use design from Generator to render preview in Manager
+          const previewCont = document.getElementById('qrManagerPreview');
+          previewCont.innerHTML = '';
+          const urlFinal = `${window.location.origin}/q/${id}`;
+          document.getElementById('qrUrlText').innerText = urlFinal;
+          
+          let manConf = {...qrStyleConfig, data: urlFinal, width: 180, height: 180};
+          managerQrCode = new QRCodeStyling(manConf);
+          managerQrCode.append(previewCont);
+          
         } else {
-          mostrarMensaje(`Error: ${await res.text()}`, 'red');
+          alert(`Error: ${await res.text()}`);
         }
       } catch (err) {
-        mostrarMensaje('Error de red', 'red');
+        alert('Error de red al guardar');
       }
-      btnGuardar.innerText = '💾 Guardar y Asignar Enlace';
+      btnGuardar.innerText = origText;
     });
 
-    // Mostrar el código QR visual en pantalla
-    function generarImagenQR(id) {
-      const contenedor = document.getElementById('qrCanvas');
-      contenedor.innerHTML = ''; // Limpiar anterior
-      contenedor.classList.remove('border-dashed', 'border-2');
-      
-      const urlFinal = `${window.location.origin}/q/${id}`;
-      document.getElementById('qrUrlText').innerText = urlFinal;
-
-      new QRCode(contenedor, {
-        text: urlFinal,
-        width: 200,
-        height: 200,
-        colorDark : "#000000",
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
-      });
-    }
-
-    // Funciones del Escáner de Cámara
-    btnScan.addEventListener('click', () => {
+    // Scanner
+    document.getElementById('btnScan').addEventListener('click', () => {
       const readerDiv = document.getElementById('reader');
       readerDiv.classList.remove('hidden');
       
+      // Request facing back camera for mobile
+      const config = { fps: 10, qrbox: {width: 250, height: 250} };
+      
       if (!html5QrcodeScanner) {
-        html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
-        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        html5QrcodeScanner = new Html5QrcodeScanner("reader", config, false);
+        
+        // Detect if mobile to prefer back camera, else let user select
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const cameraConfig = isMobile ? { facingMode: "environment" } : undefined;
+        
+        // Note: html5QrcodeScanner manages the UI selection itself if cameraConfig isn't strictly passed to start()
+        // Using the built-in UI render is safest for cross-platform compatibility
+        html5QrcodeScanner.render((decodedText) => {
+          try {
+            const url = new URL(decodedText);
+            const partes = url.pathname.split('/');
+            if(partes[1] === 'q' && partes[2]) idInput.value = partes[2];
+            else idInput.value = decodedText;
+          } catch {
+            idInput.value = decodedText;
+          }
+          
+          html5QrcodeScanner.clear();
+          readerDiv.classList.add('hidden');
+        }, () => {}); // ignore errors during scan
       }
     });
 
-    function onScanSuccess(decodedText, decodedResult) {
-      // Si escaneamos un QR nuestro, extraemos el ID. Si es la URL completa, cortamos hasta el ID.
-      try {
-        const url = new URL(decodedText);
-        const partes = url.pathname.split('/');
-        if(partes[1] === 'q' && partes[2]) {
-          idInput.value = partes[2];
-        } else {
-          idInput.value = decodedText; 
-        }
-      } catch {
-        // Si no es una URL, asumimos que el texto es el ID directamente
-        idInput.value = decodedText;
-      }
-      
-      mostrarMensaje('QR Escaneado. Listo para actualizar enlace.', 'blue');
-      html5QrcodeScanner.clear(); // Apagar cámara
-      document.getElementById('reader').classList.add('hidden');
-    }
-
-    function onScanFailure(error) { /* Ignorar errores de lectura en tiempo real */ }
-
-    // Utilidad de mensajes
-    function mostrarMensaje(texto, color) {
-      msg.innerText = texto;
-      msg.className = `text-center text-sm mt-2 block font-medium text-${color}-600`;
-    }
+    // Init
+    renderPreview();
   </script>
 </body>
 </html>
