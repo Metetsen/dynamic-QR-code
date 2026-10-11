@@ -1,0 +1,1 @@
+Invoke-RestMethod -Uri "https://dynamic-qr-code-two.vercel.app/admin/links/mi-primer-qr" -Method Put -Headers @{ "Authorization" = "Bearer Qiqe_3012"; "Content-Type" = "application/json" } -Body '{"destino": "https://github.com/Metetsen", "activo": true}'

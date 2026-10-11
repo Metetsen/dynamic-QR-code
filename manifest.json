@@ -1,0 +1,17 @@
+{
+  "name": "QR Manager MATACHIN",
+  "short_name": "QR Manager",
+  "description": "Gestor dinámico y generador de códigos QR",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#a3e635",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

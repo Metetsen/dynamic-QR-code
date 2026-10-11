@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MATACHIN - Gestor QR</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#a3e635">
+  <link rel="apple-touch-icon" href="/icon.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -301,7 +304,7 @@
       <!-- Preview visual -->
       <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col items-center">
         <h2 class="text-sm font-semibold mb-4 w-full flex items-center gap-2"><span class="bg-slate-100 dark:bg-slate-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">3</span> QR Visual (Opcional)</h2>
-        <div id="qrManagerPreview" class="p-4 bg-white border border-slate-200 rounded-lg min-h-[200px] flex items-center justify-center">
+        <div id="dynamicqrCodePreview" class="p-4 bg-white border border-slate-200 rounded-lg min-h-[200px] flex items-center justify-center">
           <span class="text-slate-400 text-xs text-center">El QR aparecerá aquí<br>al guardar el enlace</span>
         </div>
         <p id="qrUrlText" class="text-[10px] text-slate-400 mt-3 break-all text-center max-w-full"></p>
@@ -600,7 +603,7 @@
           document.getElementById('successOverlay').classList.add('flex');
           
           // Use design from Generator to render preview in Manager
-          const previewCont = document.getElementById('qrManagerPreview');
+          const previewCont = document.getElementById('dynamicqrCodePreview');
           previewCont.innerHTML = '';
           const urlFinal = `${window.location.origin}/q/${id}`;
           document.getElementById('qrUrlText').innerText = urlFinal;
@@ -653,6 +656,13 @@
 
     // Init
     renderPreview();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
   </script>
 </body>
 </html>
